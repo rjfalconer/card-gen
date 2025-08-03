@@ -296,6 +296,7 @@ class CardGenerator:
         self,
         canvas: Image,
         frame: Image,
+        style: str,
         card_number: str,
         suit_number: int,
         suit: Image,
@@ -305,6 +306,7 @@ class CardGenerator:
         Args:
             canvas: Canvas to draw on
             frame: Frame image to composite
+            style: Name of the folder in the art directory to read assets from
             card_number: Card number/value
             suit_number: Suit number (0-3)
             suit: Suit image
@@ -313,7 +315,7 @@ class CardGenerator:
         self._draw_suit_markers(canvas, card_number, suit)
 
         # Load existing number image
-        number = Image(filename=f"numbers/suit-{suit_number}/{card_number}.png")
+        number = Image(filename=f"art/{style}/suit-{suit_number}/{card_number}.png")
         number.resize(self.config.number_width, self.config.number_height)
 
         indicator = self._build_indicator(number, suit)
@@ -337,31 +339,33 @@ class CardGenerator:
 
         indicator.close()
 
-    def _build_suit(self, frame: Image, preview: Image, suit_number: int) -> None:
+    def _build_suit(self, frame: Image, style: str, preview: Image, suit_number: int) -> None:
         """Build all cards for a specific suit.
 
         Args:
             frame: Frame image to use
+            style: Name of the folder in the art directory to read assets from
             preview: Preview image to composite cards onto
             suit_number: Suit number (0-3)
         """
-        with Image(filename=f"art/suit-{suit_number}.png") as suit:
+        with Image(filename=f"art/{style}/suit-{suit_number}.png") as suit:
             suit.resize(
                 self.config.suit_indicator_width, self.config.suit_indicator_height
             )
 
             for i, card_value in enumerate(self.config.card_values):
                 canvas = Image(width=frame.width, height=frame.height)
-                self._build_card(canvas, frame, card_value, suit_number, suit)
+                self._build_card(canvas, frame, style, card_value, suit_number, suit)
                 canvas.save(filename=f"bin/suit_{suit_number}_card_{card_value}.png")
                 preview.composite(canvas, i * canvas.width, suit_number * canvas.height)
                 canvas.close()
 
-    def generate_cards(self, output_dir: str = "bin") -> None:
+    def generate_cards(self, style: str = "poker", output_dir: str = "bin") -> None:
         """Generate all playing cards.
 
         Args:
             output_dir: Directory to save generated cards
+            :param style: Asset folder to use from the art directory
         """
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -373,7 +377,7 @@ class CardGenerator:
 
                 with Image(width=total_width, height=total_height) as preview:
                     for suit_number in range(self.config.total_suits):
-                        self._build_suit(frame, preview, suit_number)
+                        self._build_suit(frame, style, preview, suit_number)
 
                     preview.save(filename=f"{output_dir}/preview.png")
 
