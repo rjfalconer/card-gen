@@ -12,8 +12,14 @@ class Config:
     card_values: List[str] = field(default_factory=list)
     total_suits: int = 4
 
+    # Art style to use from art directory
+    style: str = "poker"
+
     # Dimensions of indicator for the Ace card
     ace_size: int = 250
+
+    # Dimensions of indicator for face cards (J, Q, K)
+    royalty_size: int = 300
 
     # Margin between frame.jpg and rest of printable area
     frame_horizontal_margin: int = 100
@@ -64,8 +70,12 @@ class Config:
             raise ValueError("total_suits must be at least 1")
         if self.ace_size <= 0:
             raise ValueError("ace_size must be positive")
+        if self.royalty_size <= 0:
+            raise ValueError("royalty_size must be positive")
         if not self.card_values:
             raise ValueError("card_values cannot be empty")
+        if not self.style:
+            raise ValueError("style cannot be empty")
 
         # Validate margins are non-negative
         margin_attrs = [

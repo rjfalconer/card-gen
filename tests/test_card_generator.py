@@ -116,13 +116,18 @@ class TestCardGenerator:
             ):
                 generator.generate_cards()
 
-    def test_face_cards_not_in_drawing_functions(self) -> None:
-        """Test that face cards (J, Q, K) are not in drawing functions mapping."""
+    def test_face_cards_handled_specially(self) -> None:
+        """Test that face cards (J, Q, K) are handled via special logic in _draw_suit_markers."""
         generator = CardGenerator()
 
+        # Face cards are not in the main drawing functions mapping
         face_cards = ["J", "Q", "K"]
         for card in face_cards:
             assert card not in generator._card_drawing_functions
+
+        # But they should be in the default card_values
+        for card in face_cards:
+            assert card in generator.config.card_values
 
     def test_config_validation_during_init(self) -> None:
         """Test that config is validated during initialization."""

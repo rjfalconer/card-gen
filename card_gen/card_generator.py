@@ -6,7 +6,6 @@ from typing import Dict, Callable, Optional
 from wand.image import Image
 
 from .config import Config
-from .face_cards import FaceCardArtwork
 
 
 class Box:
@@ -53,10 +52,6 @@ class CardGenerator:
         """
         self.config = config or Config()
         self.config.validate()
-
-        self.face_card_generator = FaceCardArtwork(
-            self.config.number_width, self.config.number_height
-        )
 
         # Map card numbers to their drawing functions
         self._card_drawing_functions: Dict[str, Callable] = {
@@ -232,12 +227,42 @@ class CardGenerator:
             canvas.composite(half_canvas)
             self._insert_mirror(canvas, half_canvas)
 
-    def _draw_suit_markers(self, canvas: Image, card_number: str, suit: Image) -> None:
+    def _draw_face_card(
+        self, canvas: Image, card_number: str, suit_number: int, style: str, box: Box
+    ) -> None:
+        """Draw face card using the face card image like a very large Ace.
+
+        Args:
+            canvas: Canvas to draw on
+            card_number: Face card value (J, Q, K)
+            suit_number: Suit number (0-3)
+            style: Art style directory name
+            box: Box defining the drawable area
+        """
+        try:
+            with Image(
+                filename=f"art/{style}/suit-{suit_number}/{card_number}.png"
+            ) as face_image:
+                # Resize to royalty size like we do for Ace
+                face_image.resize(self.config.royalty_size, self.config.royalty_size)
+                # Center it like we do for Ace
+                corner_x = (box.width / 2) - (face_image.width / 2)
+                corner_y = (box.height / 2) - (face_image.height / 2)
+                box.insert(canvas, face_image, corner_x, corner_y)
+        except Exception:
+            # Fallback: don't draw anything in center if face card image is missing
+            pass
+
+    def _draw_suit_markers(
+        self, canvas: Image, card_number: str, suit_number: int, style: str, suit: Image
+    ) -> None:
         """Draw suit markers for a given card number.
 
         Args:
             canvas: Canvas to draw on
             card_number: Card number/value (A, 2-10, J, Q, K)
+            suit_number: Suit number (0-3)
+            style: Art style directory name
             suit: Suit image to use for markers
         """
         box_width = canvas.width - (2 * self.config.frame_horizontal_margin)
@@ -252,7 +277,9 @@ class CardGenerator:
         # Use the appropriate drawing function based on card number
         if card_number in self._card_drawing_functions:
             self._card_drawing_functions[card_number](canvas, suit, box)
-        # Face cards (J, Q, K) don't have suit markers in the main area
+        elif card_number in ["J", "Q", "K"]:
+            # Face cards use special face card drawing
+            self._draw_face_card(canvas, card_number, suit_number, style, box)
 
     def _build_indicator(self, number: Image, suit: Image) -> Image:
         """Build corner indicator with number and mini suit.
@@ -312,7 +339,7 @@ class CardGenerator:
             suit: Suit image
         """
         canvas.composite(frame)
-        self._draw_suit_markers(canvas, card_number, suit)
+        self._draw_suit_markers(canvas, card_number, suit_number, style, suit)
 
         # Load existing number image
         number = Image(filename=f"art/{style}/suit-{suit_number}/{card_number}.png")
@@ -339,7 +366,9 @@ class CardGenerator:
 
         indicator.close()
 
-    def _build_suit(self, frame: Image, style: str, preview: Image, suit_number: int) -> None:
+    def _build_suit(
+        self, frame: Image, style: str, preview: Image, suit_number: int
+    ) -> None:
         """Build all cards for a specific suit.
 
         Args:
@@ -360,12 +389,11 @@ class CardGenerator:
                 preview.composite(canvas, i * canvas.width, suit_number * canvas.height)
                 canvas.close()
 
-    def generate_cards(self, style: str = "poker", output_dir: str = "bin") -> None:
+    def generate_cards(self, output_dir: str = "bin") -> None:
         """Generate all playing cards.
 
         Args:
             output_dir: Directory to save generated cards
-            :param style: Asset folder to use from the art directory
         """
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -377,7 +405,7 @@ class CardGenerator:
 
                 with Image(width=total_width, height=total_height) as preview:
                     for suit_number in range(self.config.total_suits):
-                        self._build_suit(frame, style, preview, suit_number)
+                        self._build_suit(frame, self.config.style, preview, suit_number)
 
                     preview.save(filename=f"{output_dir}/preview.png")
 

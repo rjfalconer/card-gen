@@ -26,7 +26,9 @@ class TestConfig:
             "K",
         ]
         assert config.total_suits == 4
+        assert config.style == "poker"
         assert config.ace_size == 250
+        assert config.royalty_size == 300
         assert config.support_left_handed is True
 
     def test_custom_initialization(self) -> None:
@@ -35,12 +37,16 @@ class TestConfig:
         config = Config(
             card_values=custom_values,
             total_suits=2,
+            style="custom",
             ace_size=300,
+            royalty_size=400,
             support_left_handed=False,
         )
         assert config.card_values == custom_values
         assert config.total_suits == 2
+        assert config.style == "custom"
         assert config.ace_size == 300
+        assert config.royalty_size == 400
         assert config.support_left_handed is False
 
     def test_validation_success(self) -> None:
@@ -58,6 +64,18 @@ class TestConfig:
         """Test validation fails for negative ace_size."""
         config = Config(ace_size=-10)
         with pytest.raises(ValueError, match="ace_size must be positive"):
+            config.validate()
+
+    def test_validation_negative_royalty_size(self) -> None:
+        """Test validation fails for negative royalty_size."""
+        config = Config(royalty_size=-10)
+        with pytest.raises(ValueError, match="royalty_size must be positive"):
+            config.validate()
+
+    def test_validation_empty_style(self) -> None:
+        """Test validation fails for empty style."""
+        config = Config(style="")
+        with pytest.raises(ValueError, match="style cannot be empty"):
             config.validate()
 
     def test_validation_empty_card_values_after_manual_clear(self) -> None:
